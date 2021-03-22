@@ -28,6 +28,7 @@ SCRIPTS_DIR="${CURRENT_DIR}"
 . ${SCRIPTS_DIR}/da_autotune_config_yaml_tests.sh
 . ${SCRIPTS_DIR}/da_basic_api_tests.sh
 . ${SCRIPTS_DIR}/modify_autotune_config_tests.sh
+. ${SCRIPTS_DIR}/autotune_id_tests.sh
 
 # Iterate through the commandline options
 while getopts i:r:-: gopts
@@ -102,6 +103,10 @@ function functional_test() {
 		testcase=""
 		# Modify existing autotuneconfig yamls and check for API results
 		modify_autotune_config_tests > >(tee "${RESULTS}/modify_autotune_config_tests.log") 2>&1
+		
+		testcase=""
+		# validate the autotune object id
+		autotune_id_tests > >(tee "${RESULTS}/autotune_id_tests.log") 2>&1
 	fi
 }
 

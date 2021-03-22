@@ -35,7 +35,7 @@ TESTS_FAILED=0
 TESTS_PASSED=0
 TESTS=0
 
-TEST_SUITE_ARRAY=("app_autotune_yaml_tests" "autotune_config_yaml_tests" "basic_api_tests" "modify_autotune_config_tests" "sanity")
+TEST_SUITE_ARRAY=("app_autotune_yaml_tests" "autotune_config_yaml_tests" "basic_api_tests" "modify_autotune_config_tests" "sanity" "autotune_id_tests")
 modify_autotune_config_tests=("add_new_tunable" "apply_null_tunable" "remove_tunable" "change_bound" "multiple_tunables")
 
 AUTOTUNE_IMAGE="kruize/autotune:test"
@@ -128,7 +128,7 @@ function deploy_autotune() {
 	
 	# Check if the cluster_type is minikube., if so deploy prometheus
 	if [ "${cluster_type}" == "minikube" ]; then
-		echo "Installing Prometheus on minikube" >/dev/stderr
+		echo "Installing Prometheus on minikube" >>/dev/stderr
 		setup_prometheus >> ${SETUP_LOG} 2>&1
 	fi
 	
@@ -144,8 +144,8 @@ function deploy_autotune() {
 	status="$?"
 	# Check if autotune is deployed 
 	if [ "${status}" -eq "1" ]; then
-		echo "Error deploying autotune" >/dev/stderr
-		echo "See ${PWD}/tests/setup.log for more info" >/dev/stderr
+		echo "Error deploying autotune" >>/dev/stderr
+		echo "See ${PWD}/tests/setup.log for more info" >>/dev/stderr
 		exit -1
 	fi
 }
@@ -218,8 +218,8 @@ function check_test_case() {
 # output: summary of the specified test suite
 function testsuitesummary() {
 	TEST_SUITE_NAME=$1
-	FAILED_CASES=$2
-	elapsed_time=$3
+	elapsed_time=$2
+	FAILED_CASES=$3
 	((total_time=total_time+elapsed_time))
 	echo 
 	echo "########### Results Summary of the test suite ${TEST_SUITE_NAME} ##########"
@@ -422,6 +422,11 @@ function run_test_case() {
 	echo -n "Deploying autotune..."| tee -a ${LOG}
 	setup >> ${AUTOTUNE_SETUP_LOG} 2>&1
 	echo "done"| tee -a ${LOG}
+	
+	# create autotune setup
+	echo -n "Deploying autotune..."| tee  ${LOG}
+	setup >> ${SETUP_LOG} 2>&1
+	echo "done"| tee  ${LOG}
 	
 	# Apply the yaml file 
 	if [ "${object}" == "autotuneconfig" ]; then
@@ -633,7 +638,6 @@ function create_expected_searchspace_json() {
 function run_curl_cmd() {
 	cmd=$1
 	json_file=$2
-
 	echo "***** Curl cmd = ${cmd} json file = ${json_file}"
 	echo "Curl cmd=${cmd}" | tee -a ${LOG}
 	${cmd} > ${json_file}
@@ -1164,7 +1168,7 @@ function get_listapplication_json() {
 	else
 		cmd="${curl_cmd}/listApplications?application_name=${app_names}"
 	fi
-
+	
 	json_file="${LOG_DIR}/actual_listapp.json"
 	run_curl_cmd "${cmd}" ${json_file}
 }
@@ -1269,3 +1273,4 @@ function get_autotune_config_jsons() {
 	done
 	echo ""
 }
+

@@ -20,7 +20,7 @@ spec:
       containers:
       - name: autotune
         image: "{{ AUTOTUNE_IMAGE }}"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
           - name: CLUSTER_TYPE
             valueFrom:
