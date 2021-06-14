@@ -35,7 +35,7 @@ TESTS_FAILED=0
 TESTS_PASSED=0
 TESTS=0
 
-TEST_SUITE_ARRAY=("app_autotune_yaml_tests" "autotune_config_yaml_tests" "basic_api_tests" "modify_autotune_config_tests" "sanity" "configmap_yaml_tests")
+TEST_SUITE_ARRAY=("app_autotune_yaml_tests" "autotune_config_yaml_tests" "basic_api_tests" "modify_autotune_config_tests" "sanity" "configmap_yaml_tests" "rm_api_tests")
 modify_autotune_config_tests=("add_new_tunable" "apply_null_tunable" "remove_tunable" "change_bound" "multiple_tunables")
 
 AUTOTUNE_IMAGE="kruize/autotune:test"
@@ -1297,4 +1297,44 @@ function get_autotune_config_jsons() {
 		fi
 	done
 	echo ""
+}
+
+# Compare the actual result with the expected result
+# input: Test name, expected result 
+function compare_result() {
+	flag=0
+	__test__=$1
+	expected_result=$2
+	expected_behaviour=$3
+
+	if [[ ! ${actual_result} =~ ${expected_result} ]]; then
+		flag=1
+	fi
+
+	display_result "${expected_behaviour}" ${__test__} ${flag}
+}
+
+
+# Display the result based on the actual flag value
+# input: Expected behaviour, test name and actual flag value
+function display_result() {
+	expected_behaviour=$1
+	_id_test_name_=$2
+	actual_flag=$3
+	((TOTAL_TESTS++))
+	((TESTS++))
+
+	echo "Expected behaviour: ${expected_behaviour}" | tee -a ${LOG}
+	if [ "${actual_flag}" -eq "0" ]; then
+		((TESTS_PASSED++))
+		((TOTAL_TESTS_PASSED++))
+		echo "Expected behaviour found" | tee -a ${LOG}
+		echo "Test passed" | tee -a ${LOG}
+	else
+		((TESTS_FAILED++))
+		((TOTAL_TESTS_FAILED++))
+		FAILED_CASES+=(${_id_test_name_})
+		echo "Expected behaviour not found" | tee -a ${LOG}
+		echo "Test failed" | tee -a ${LOG}
+	fi
 }

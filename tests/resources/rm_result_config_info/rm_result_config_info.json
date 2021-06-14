@@ -1,0 +1,36 @@
+	[
+                  {
+                     "name": "update requests and limits",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "resources": {
+                                    "requests": {
+                                       "cpu": "CPUREQUEST$",
+                                       "memory": "MEMREQUEST$"
+                                    },
+                                    "limits": {
+                                       "cpu": "CPULIMITS$",
+                                       "memory": "MEMLIMIT$"
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  {
+                     "name": "update env",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "env": {
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               ]

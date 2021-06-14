@@ -1,0 +1,73 @@
+[
+   {
+      "experiment_id": "$EXP_ID",
+      "application_name": "$APP_NAME",
+      "trials": [
+         {
+            "app-version": "v1",
+            "trial_id": "",
+            "trial_num": 1,
+            "trial_run": "15mins",
+            "trial_measurement_time": "3mins",
+            "training": {
+               "deployment_name": "$TRAINING_DEPLOYMENT",
+               "metrics": [
+                  {
+                     "name": "Sobj_fun_variable",
+                     "query": "$obj_fun_query",
+                     "datasource": "$obj_fun_datasource"
+                  },
+                  {
+                     "name": "cpuRequest",
+                     "query": "cpuRequest_query",
+                     "datasource": "prometheus"
+                  },
+                  {
+                     "name": "memRequest",
+                     "query": "memRequest_query",
+                     "datasource": "prometheus"
+                  }
+               ],
+               "config": [
+                  {
+                     "name": "update requests and limits",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "resources": {
+                                    "requests": {
+                                       "cpu": "$CPU_REQUEST",
+                                       "memory": "$MEMORY_REQUEST"
+                                    },
+                                    "limits": {
+                                       "cpu": "$CPU_LIMIT",
+                                       "memory": "$MEMORY_LIMIT"
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  {
+                     "name": "update env",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "env": {
+                                    "JVM_OPTIONS": "$JVM_OPTIONS",
+                                    "JVM_ARGS": "$JVM_ARGS"
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               ]
+            }
+         }
+      ]
+   }
+]
