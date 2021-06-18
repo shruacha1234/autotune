@@ -1,0 +1,78 @@
+[
+   {
+      "experiment_id": "2190310A384BC90EF",
+      "application_name": "petclinic-sample-cf764b6d-kmh27",
+      "trials": [
+         {
+            "app-version": "v1",
+            "trial_id": "",
+            "trial_num": 2,
+            "trial_run": "15mins",
+            "trial_measurement_time": "3mins",
+            "training": {
+               "deployment_name": "petclinic-sample-training-2",
+               "metrics": [
+                  {
+                     "name": "request_sum",
+                     "query": "rate(http_server_requests_seconds_sum{exception=None,method=GET,outcome=SUCCESS,status=200,uri=/webjars/**,}[1m])",
+                     "datasource": "prometheus"
+                  },
+                  {
+                     "name": "request_count",
+                     "query": "rate(http_server_requests_seconds_count{exception=None,method=GET,outcome=SUCCESS,status=200,uri=/webjars/**,}[1m])",
+                     "datasource": "prometheus"
+                  },
+                  {
+                     "name": "cpuRequest",
+                     "query": "(container_cpu_usage_seconds_total{$CONTAINER_LABEL$!=POD, $POD_LABEL$=$POD$}[1m])",
+                     "datasource": "prometheus"
+                  },
+                  {
+                     "name": "memRequest",
+                     "query": "container_memory_working_set_bytes{$CONTAINER_LABEL$=, $POD_LABEL$=$POD$}",
+                     "datasource": "prometheus"
+                  }
+               ],
+               "config": [
+                  {
+                     "name": "update requests and limits",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "resources": {
+                                    "requests": {
+                                       "cpu": 2,
+                                       "memory": "500Mi"
+                                    },
+                                    "limits": {
+                                       "cpu": 4,
+                                       "memory": "900Mi"
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  },
+                  {
+                     "name": "update env",
+                     "spec": {
+                        "template": {
+                           "spec": {
+                              "container": {
+                                 "env": {
+                                    "JVM_OPTIONS": "-XX:MaxInlineLevel=26",
+                                    "JVM_ARGS": "-XX:MaxInlineLevel=26"
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               ]
+            }
+         }
+      ]
+   }
+]

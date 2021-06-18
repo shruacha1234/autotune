@@ -39,7 +39,7 @@ function rm_api_tests() {
 	((TOTAL_TEST_SUITES++))
 	input_json="${TEST_DIR_}/resources/em_input_json/petclinic_input.json"
 
-	rm_api_tests=("validate_list_exp_query" "validate_list_exp_result")
+	rm_api_tests=("get_list_exp_invalid_tests" "get_list_exp_valid_tests")
 	
 	# check if the test case is supported
 	if [ ! -z "${testcase}" ]; then
@@ -70,12 +70,12 @@ function rm_api_tests() {
 	autotune_names=("petclinic-autotune-0")
 	
 	echo ""
-	echo "******************* Executing test suite ${FUNCNAME} ****************"
+	echo "************************* Executing test suite ${FUNCNAME} **********************"
 	echo ""
 		
 	#create autotune setup
 	echo -n "Deploying autotune..."
-#	setup ${CONFIGMAP} >> ${SETUP} 2>&1
+	setup ${CONFIGMAP} >> ${SETUP} 2>&1
 	echo "done"
 	
 	# Giving a sleep for autotune pod to be up and running
@@ -90,7 +90,7 @@ function rm_api_tests() {
 	form_curl_cmd
 
 	# Deploy petclinic application instances	
-#	deploy_app ${APP_REPO} petclinic 1
+	deploy_app ${APP_REPO} petclinic 1
 
 	# Sleep for sometime for application pods to be up
 	sleep 5
@@ -143,10 +143,10 @@ function rm_api_tests() {
 	fi
 	
 	# Cleanup the deployed apps
-#	app_cleanup "petclinic"
+	app_cleanup "petclinic"
 
 	# Cleanup autotune
-#	autotune_cleanup ${cluster_type}
+	autotune_cleanup ${cluster_type}
 	
 	end_time=$(get_date)
 	elapsed_time=$(time_diff "${start_time}" "${end_time}")
@@ -158,8 +158,70 @@ function rm_api_tests() {
 	testsuitesummary ${FUNCNAME} ${elapsed_time} ${FAILED_CASES} 
 }
 
-function validate_list_exp_query() {
-	for exp_testcase in "${validate_list_exp_query_testcases[@]}"
+function run_list_exp_test() {
+	exp=$1
+	exp_id=$2
+	curl="curl -H 'Accept: application/json'"
+	list_exp_url="http://<URL>:<PORT>/listExperiments"
+	case "${exp}" in
+		invalid-exp-id)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id=xyz&trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id=xyz&trial_num=2' -w '\n%{http_code}'"
+			;;
+		empty-exp-id)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id= &trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id= &trial_num=2' -w '\n%{http_code}'"
+			;;
+		no-exp-id)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?trial_num=2' -w '\n%{http_code}'"
+			;;
+		null-exp-id)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id=null&trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id=null&trial_num=2' -w '\n%{http_code}'"
+			;;
+		invalid-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=xyz' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=xyz' -w '\n%{http_code}'"
+			;;
+		empty-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=' -w '\n%{http_code}'"
+			;;
+		no-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}'"
+			;;
+		null-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=null' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=null' -w '\n%{http_code}'"
+			;;
+		no-exp-id-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?' -w '\n%{http_code}'"
+			;;
+		valid-exp-id)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}'"
+			;;
+		valid-exp-id-trial-number)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}'"
+			;;
+	esac
+	echo "command used to query the listExperiments API = ${get_list_experiments_cmd}" | tee -a ${LOG_} ${LOG}
+	echo "" | tee -a ${LOG_} ${LOG}
+
+	echo "${get_list_experiments}" >> ${LOG_} ${LOG}
+	list_exp_http_code=$(tail -n1 <<< "${get_list_experiments}")
+	response=$(echo -e "${get_list_experiments}" | tail -2 | head -1)
+	list_exp_response=$(echo ${response} | cut -c 4-)
+	echo "${list_exp_response}" > ${result}
+}
+
+function get_list_exp_invalid_tests() {
+	IFS=' ' read -r -a get_list_exp_invalid_tests <<<  ${rm_ml_api_testscases[$FUNCNAME]}
+	for exp_testcase in "${get_list_exp_invalid_tests[@]}"
 	do
 		LOG_="${TEST_DIR}/${exp_testcase}.log"
 		TESTS_="${TEST_DIR}/${exp_testcase}"
@@ -167,30 +229,19 @@ function validate_list_exp_query() {
 		result="${TESTS_}/listExperiment_result.log"
 		
 		echo "************************************* ${exp_testcase} Test ****************************************" | tee -a ${LOG_} ${LOG}
+		echo " "  | tee -a ${LOG_} ${LOG}
 		
-		query_list_experiments "${exp_testcase}" "${exp_id}"
-		echo "list_exp_http_code ${list_exp_http_code}"
-		if [[ "${exp_testcase}" == valid* ]]; then
-			expected_result_="200"
-			expected_behaviour="RESPONSE_CODE = 200 OK"
-		else
-			expected_result_="400"
-			expected_behaviour="RESPONSE_CODE = 400 BAD REQUEST"
-		fi
-		
+		run_list_exp_test "${exp_testcase}" "${exp_id}"
+
+		expected_result_="^4[0-9][0-9]"
+		expected_behaviour="RESPONSE_CODE = 4XX BAD REQUEST"
+
 		actual_result="${list_exp_http_code}"
 		echo "Actual result: ${actual_result}" >> ${LOG_}
 		compare_result ${FUNCNAME} ${expected_result_} "${expected_behaviour}" > >(tee -a "${LOG_}") 2>&1
-		echo "***********************************************************************************" >> ${LOG_}
-		if [[ "${exp_testcase}" == valid-exp-id ]]; then
-			echo "********************Validating the Experiment result********************"
-			validate_list_exp_info 
-			for trial in $(jq '.[].trials | keys | .[]' ${result})
-			do
-				validate_list_exp_trials ${trial}
-			done
-		fi
 	done
+	
+	echo "*************************************************************************************" | tee -a ${LOG_} ${LOG}
 }
 
 function validate_list_exp_result() {
@@ -199,12 +250,46 @@ function validate_list_exp_result() {
 #	result="${TEST_DIR}/listExperiment_result.log"
 	result="/home/shruthi/rm_result.json"
 	autotune_json_="${AUTOTUNE_JSONS_DIR}/${autotune_names[count]}.json"
+	container_config="${AUTOTUNE_CONFIG_JSONS_DIR}/container.json"
 	validate_list_exp_result_tests=("validate_list_exp_info" "validate_list_exp_trials")
-#	query_list_experiments "valid-query" "${exp_id}"
+	
 	for exp_result_test in "${validate_list_exp_result_tests[@]}"
 	do
-		echo "*************************************** ${exp_result_test} Test ***************************************" | tee -a ${LOG}
+		echo "______________________________________ ${exp_result_test} ______________________________________" | tee -a ${LOG}
+		echo "" | tee -a ${LOG}
 		${exp_result_test}
-		echo ""
+		echo "" | tee -a ${LOG}
+		echo "_______________________________________________________________________________________________" | tee -a ${LOG}
+		echo "" | tee -a ${LOG}
 	done
+}
+
+function get_list_exp_valid_tests() {
+	IFS=' ' read -r -a get_list_exp_valid_tests <<<  ${rm_ml_api_testscases[$FUNCNAME]}
+
+	for exp_testcase in "${get_list_exp_valid_tests[@]}"
+	do
+		LOG_="${TEST_DIR}/${exp_testcase}.log"
+		TESTS_="${TEST_DIR}/${exp_testcase}"
+		mkdir -p ${TESTS_}
+		result="${TESTS_}/listExperiment_result.log"
+		
+		echo "************************************* ${exp_testcase} Test ****************************************" | tee -a ${LOG_} ${LOG}
+		echo " "  | tee -a ${LOG_} ${LOG}
+		
+		run_list_exp_test "${exp_testcase}" "${exp_id}"
+
+		actual_result="${list_exp_http_code}"
+		expected_result_="200"
+		expected_behaviour="RESPONSE_CODE = 200 OK"
+		
+		echo "Actual result: ${actual_result}" >> ${LOG_}
+		compare_result ${FUNCNAME} ${expected_result_} "${expected_behaviour}" > >(tee -a "${LOG_}") 2>&1
+
+		if [ "${failed}" -eq 0 ]; then
+			validate_list_exp_result
+		fi
+	done
+	
+	echo "*************************************************************************************" | tee -a ${LOG_} ${LOG}
 }

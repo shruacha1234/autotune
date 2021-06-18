@@ -20,18 +20,10 @@
 space=" "
 # Breif description about the experiment manager tests
 declare -A rm_api_test_description
-rm_api_test_description=([validate_list_exp_query]="Deploy autotune and required dependencies, query the list experiment API with different combinations and validate the result"
-[validate_list_exp_result]="Deploy autotune and required dependencies, query the list experiment API and validate the result")
+rm_api_test_description=([get_list_exp_invalid_tests]="Deploy autotune and required dependencies, query the list experiment API with different invalid combinations and validate the result"
+[get_list_exp_valid_tests]="Deploy autotune and required dependencies, query the list experiment API and validate the result")
 
-validate_list_exp_query_testcases=("invalid-exp-id"
-"empty-exp-id"
-"no-exp-id"
-"null-exp-id"
-"invalid-trial-number"
-"empty-trial-number"
-"no-trial-number"
-"null-trial-number"
-"no-exp-id-trial-number"
-"valid-exp-id"
-"valid-exp-id-trial-number")
+declare -A rm_ml_api_testscases
+rm_ml_api_testscases=([get_list_exp_invalid_tests]='invalid-exp-id empty-exp-id no-exp-id null-exp-id invalid-trial-number empty-trial-number no-trial-number null-trial-number no-exp-id-trial-number'
+[get_list_exp_valid_tests]='valid-exp-id valid-exp-id-trial-number')
 

@@ -21,66 +21,6 @@ declare -A expected_exp_details
 declare -A actual_exp_details
 declare -A trial_metrics_value
 
-function query_list_experiments() {
-	exp=$1
-	exp_id=$2
-	curl="curl -H 'Accept: application/json'"
-	list_exp_url="http://<URL>:<PORT>/listExperiments"
-	case "${exp}" in
-		invalid-exp-id)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id=xyz&trial_num=2' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id=xyz&trial_num=2' -w '\n%{http_code}'"
-			;;
-		empty-exp-id)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id= &trial_num=2' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id= &trial_num=2' -w '\n%{http_code}'"
-			;;
-		no-exp-id)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?trial_num=2' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?trial_num=2' -w '\n%{http_code}'"
-			;;
-		null-exp-id)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id=null&trial_num=2' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id=null&trial_num=2' -w '\n%{http_code}'"
-			;;
-		invalid-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=xyz' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=xyz' -w '\n%{http_code}'"
-			;;
-		empty-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=' -w '\n%{http_code}'"
-			;;
-		no-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}'"
-			;;
-		null-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=null' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=null' -w '\n%{http_code}'"
-			;;
-		no-exp-id-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?' -w '\n%{http_code}'"
-			;;
-		valid-exp-id)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}'"
-			;;
-		valid-exp-id-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}' 2>&1)
-			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}'"
-			;;
-	esac
-	echo "command used to query the listExperiments API = ${get_list_experiments_cmd}" | tee -a ${LOG_} ${LOG}
-	echo "" | tee -a ${LOG_} ${LOG}
-#	echo "${get_list_experiments}" >> ${LOG_} ${LOG}
-#	list_exp_http_code=$(tail -n1 <<< "${get_list_experiments}")
-#	response=$(echo -e "${get_list_experiments}" | tail -2 | head -1)
-#	list_exp_response=$(echo ${response} | cut -c 4-)
-#	echo "${list_exp_response}" > ${result}
-	list_exp_http_code="200"
-}
 function get_actual_exp_info() {
 	actual_exp_details[experiment_id]=$(cat ${result} | jq .[].experiment_id)
 	actual_exp_details[application_name]=$(cat ${result} | jq .[].application_name)
@@ -117,12 +57,12 @@ function validate_list_exp_info() {
 			echo "${exp_info} matched" | tee -a ${LOG}
 		fi
 		echo "" | tee -a ${LOG}
+
+		expected_behaviour="Experiment details of the result must be same as input"
+		display_result "${expected_behaviour}" ${test_name} ${failed}
 	done
 
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
-	
-	expected_behaviour="Experiment details of the result must be same as input"
-	display_result "${expected_behaviour}" ${test_name} ${failed}
 }
 
 function get_actual_trial_info() {
@@ -133,10 +73,10 @@ function get_actual_trial_info() {
 }
 
 function get_expected_trial_info() {
-	expected_trial_details[trial_num]=$(cat ${input_json} | jq .[].trials[${trial}].trial_num)
-	expected_trial_details[trial_run]=$(cat ${input_json} | jq .[].trials[${trial}].trial_run)
-	expected_trial_details[trial_measurement_time]=$(cat ${input_json} | jq .[].trials[${trial}].trial_measurement_time)
-	expected_trial_details[deployment_name]=$(cat ${input_json} | jq .[].trials[${trial}].training.deployment_name)
+	expected_trial_details[trial_num]=$(cat ${input_json} | jq .[].trials[].trial_num)
+	expected_trial_details[trial_run]=$(cat ${input_json} | jq .[].trials[].trial_run)
+	expected_trial_details[trial_measurement_time]=$(cat ${input_json} | jq .[].trials[].trial_measurement_time)
+	expected_trial_details[deployment_name]=$(cat ${input_json} | jq .[].trials[].training.deployment_name)
 }
 
 function validate_trial_details() {
@@ -152,7 +92,7 @@ function validate_trial_details() {
 		echo "------------------------------ Matching ${trial} ------------------------------" | tee -a ${LOG}
 		echo "" | tee -a ${LOG}
 		echo "Actual ${trial}: ${actual_trial_details[$trial]}" | tee -a ${LOG}
-		echo "Expected ${exp_info}: ${expected_trial_details[$trial]}" | tee -a ${LOG}
+		echo "Expected ${trial}: ${expected_trial_details[$trial]}" | tee -a ${LOG}
 		if [ "${actual_trial_details[$trial]}" != "${expected_trial_details[$trial]}" ]; then
 			echo "${trial} did not match" | tee -a ${LOG}
 			failed=1
@@ -166,34 +106,49 @@ function validate_trial_details() {
 		display_result "${expected_behaviour}" ${test_name} ${failed}
 	done
 
-	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
-	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}	
 }
 
-function validate_metric_queries() {
-	trial_metrics=".[].trials[${trial}].training.metrics[${count}]"
-	declare -A expected_metric_details
-	declare -A actual_metric_details
-	for metric in "${metric_details[@]}"
-	do
-		expected_metric_details[$metric]=$(cat ${input_json} | jq ${trial_metrics}.${metric})
-		actual_metric_details[$metric]=$(cat ${result} | jq ${trial_metrics}.${metric})
-		echo "------------------------------ Matching ${metric} ------------------------------" | tee -a ${LOG}
-		echo "" | tee -a ${LOG}
-		echo "Actual ${metric}: ${actual_metric_details[$metric]}" | tee -a ${LOG}
-		echo "Expected ${metric}: ${expected_metric_details[$metric]}" | tee -a ${LOG}
-		if [ "${actual_metric_details[$metric]}" != "${expected_metric_details[$metric]}" ]; then
-			echo "${metric} did not match" | tee -a ${LOG}
-			failed=1
-		else
-			failed=0
-			echo "${metric} matched" | tee -a ${LOG}
-		fi
+function create_expected_metric_details() {
+	# Get tunables from application autotune object
+	app_autotune_tunables_json="${TEST_DIR}/listExperiment_result_app_autotune_tunables.json"
+	echo "$(jq '[.spec.sla.function_variables[] | {name: .name, query: .query, datasource: .datasource}] | sort_by(.name)' ${autotune_json_} | tr -d '[]')" > ${app_autotune_tunables_json}
 	
-		expected_behaviour="Metric details of the result must be same as input"
-		display_result "${expected_behaviour}" ${test_name} ${failed}
+	# Get tunables from layer config and combine with tunables of application autotune object
+	printf '[' > ${expected_metrics_json}
+	tunable_length=$(cat ${container_config} | jq '.tunables | length')
+	for tunable in $(jq '.tunables | keys | .[]' ${container_config})
+	do
+		((tunable_length--))
+		printf '\n  {' >> ${expected_metrics_json}
+		printf '\n    "name": '$(cat ${container_config} | jq .tunables[${tunable}].name)',\n' >> ${expected_metrics_json}
+		query="$(cat ${container_config} | jq .tunables[${tunable}].queries.datasource[].query)"
+		echo '    "query": '${query}',' >> ${expected_metrics_json}
+		printf '    "datasource": '$(cat ${container_config} | jq .tunables[${tunable}].queries.datasource[].name)'' >> ${expected_metrics_json}
+		printf '\n  },' >> ${expected_metrics_json}
+		if [ "${tunable_length}" -eq "0" ]; then
+			cat ${app_autotune_tunables_json} >> ${expected_metrics_json}
+		fi
 	done
+	printf ']' >> ${expected_metrics_json}
+}
 
+function create_actual_metric_details() {
+	# Sort the json based on metric name
+	echo "$(jq '[.[].trials['${trial}'].training.metrics[] | {name: .name, query: .query, datasource: .datasource}] | sort_by(.name)' ${result})" > ${actual_metrics_json}
+}
+
+function validate_metric_details() {
+	echo "------------------------------ Validating metric details ------------------------------" | tee -a ${LOG}
+	actual_metrics_json="${TEST_DIR}/listExperiment_result_actual_metrics.json"
+	expected_metrics_json="${TEST_DIR}/listExperiment_result_expected_metrics.json"
+	
+	create_expected_metric_details
+	create_actual_metric_details
+	
+	# Compare the actual json and expected jsons
+	compare_json "${actual_metrics_json}" "${expected_metrics_json}" "${test_name}"
+	
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
@@ -201,6 +156,7 @@ function check_for_non_blank_values() {
 	failed=0
 	metrics=('"name"' '"query"' '"datasource"' '"score"' '"Error"' '"min"' '"mean"' '"mode"' '"max"' '"95.0"' '"99.0"' '"99.9"' '"99.99"' '"99.999"' '"99.9999"' '"100.0"' '"spike"')
 	
+	echo "test: Check metrics for blank values..." | tee -a ${LOG}
 	for metric_ in "${metrics[@]}"
 	do
 		metric_val=$(echo ${trial_metrics_value[$metric_]} | tr -d '"')
@@ -213,6 +169,8 @@ function check_for_non_blank_values() {
 	
 	expected_behaviour="Metric values must contain some values it should not blank"
 	display_result "${expected_behaviour}" ${test_name} ${failed}
+	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
 function validate_percentile_values() {
@@ -220,6 +178,8 @@ function validate_percentile_values() {
 	percetile=('"95.0"' '"99.0"' '"99.9"' '"99.99"' '"99.999"' '"99.9999"' '"100.0"')
 	p_count=0
 	
+	echo ""  | tee -a ${LOG}
+	echo "test: Validate percentile values..."  | tee -a ${LOG}
 	# Store the percentile values in an array in the given order
 	for p in "${percetile[@]}"
 	do
@@ -244,13 +204,16 @@ function validate_percentile_values() {
 	
 	expected_behaviour="Values for percentiles has to be in ascending order for 95, 99, ... 99.9999, 100"
 	display_result "${expected_behaviour}" ${test_name} ${failed}
-	echo "-----------------------------------------------" | tee -a ${LOG}
+	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
 function validate_mean() {
 	mean=$(echo ${trial_metrics_value['"mean"']} | tr -d '"')
 	nn_percentile=$(echo ${trial_metrics_value['"99.0"']} | tr -d '"')
 	
+	echo ""  | tee -a ${LOG}
+	echo "test: Validate Mean value..."  | tee -a ${LOG}
 	# Check if the Mean value is blank
 	if [ -z "${mean}" ]; then
 		failed=1
@@ -278,11 +241,13 @@ function validate_trial_metrics() {
 	metric_details=("name" "query" "datasource")
 	metric_length=$(cat ${result} | jq '.[].trials['${trial}'].training.metrics | length')
 	
+	validate_metric_details
+		
 	while [ ${count} -lt ${metric_length} ]
 	do
 		metric_name=$(cat ${result} | jq .[].trials[${trial}].training.metrics[${count}].name)
 		echo "" | tee -a ${LOG} 
-		echo "--------------******Validating trial_Metrics for ${metric_name}*****-----------------" | tee -a ${LOG}
+		echo "--------------******Validating trial_Metrics values for ${metric_name}*****-----------------" | tee -a ${LOG}
 		echo "" | tee -a ${LOG} 
 		# For each metric store its corresponding values and validate the metrics
 		for metric in $(jq '.[].trials['${trial}'].training.metrics['${count}'] | keys | .[]' ${result})
@@ -290,7 +255,6 @@ function validate_trial_metrics() {
 			trial_metrics_value[$metric]=$(cat ${result} | jq .[].trials[${trial}].training.metrics[${count}].${metric})
 		done
 		
-		validate_metric_queries
 		vaildate_metrics_values
 		((count++))
 	done
@@ -298,13 +262,17 @@ function validate_trial_metrics() {
 
 function validate_config_template() {
 	config_details="${TEST_DIR_}/resources/rm_result_config_info/rm_result_config_info.json"
-	resources="jq .[].trials[${trial}].training.config[0].spec[].spec[].resources"
-	env="jq .[].trials[${trial}].training.config[1].spec[].spec[].env"
+	resources="jq .[].trials[].training.config[0].spec[].spec[].resources"
+	env="jq .[].trials[].training.config[1].spec[].spec[].env"
+	expected_json="${TEST_DIR}/expected_config.json"
+	
+	echo "" | tee -a ${LOG}
+	echo "test: Validate config template for trial ${trial_num}..." | tee -a ${LOG}
+	
 	cpu_request=$(cat ${input_json} | ${resources}.requests.cpu)
 	mem_request=$(cat ${input_json} | ${resources}.requests.memory)
 	cpu_limit=$(cat ${input_json} | ${resources}.limits.cpu)
 	mem_limit=$(cat ${input_json} | ${resources}.limits.memory)
-	expected_json="${TEST_DIR}/expected_config.json"
 	
 	# Copy the template
 	cp "${config_details}" "${expected_json}"
@@ -316,7 +284,7 @@ function validate_config_template() {
 	sed -i 's|"MEMLIMIT$"|'"${mem_limit}"'|g' ${expected_json}
 	
 	# Get the env parameters from input json
-	env_param=$(cat ${input_json} | jq .[].trials[${trial}].training.config[1].spec[].spec[].env | tr -d '{}' | tr -d '\n')
+	env_param=$(cat ${input_json} | ${env} | tr -d '{}' | tr -d '\n')
 	
 	# Convert env_param to an array. Here comma is our delimiter value
 	IFS="," read -a env_param <<< ${env_param}
@@ -342,9 +310,11 @@ function validate_config_template() {
 	
 		((env_count--))
 	done
-
+	
 	# Compare actual json obtained with the expected json
 	compare_json ${actual_json} ${expected_json} ${test_name}
+	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
 function check_tunable_value() {
@@ -367,22 +337,26 @@ function check_tunable_value() {
 			tunable_value=$(cat ${actual_json} | jq ${resources_}.limits.cpu)
 			;;
 	esac
-	
+
+	# bc(basic calculator) returns 1 if condition is TRUE else retturns 0
  	if [[ $(bc <<< "${tunable_value} >= ${tunable_lower_bound} && ${tunable_value} <= ${tunable_upper_bound}") == 0 ]]; then
  		flag=1
 	fi
 	
-	expected_behaviour="Actual Tunable value should be within the given range"
+	expected_behaviour="Application Tunable value should be within the given range"
 	display_result "${expected_behaviour}" ${test_name} ${flag}
 }
 
 function validate_resource_values() {
 	resources_=".[0].spec[].spec[].resources"
-	container_json="${AUTOTUNE_CONFIG_JSONS_DIR}/container.json"
+	container_json="${AUTOTUNE_CONFIG_JSONS_DIR}/${layer_name}.json"
 	requests=$(cat ${actual_json} | jq ''${resources_}'.requests | length')
 	limits=$(cat ${actual_json} | jq ''${resources_}'.limits | length')
 	actual_resources_count=$(( $requests + $limits ))
 	expected_resources_count=$(cat ${container_json} | jq '.tunables | length')
+	
+	echo "" | tee -a ${LOG}
+	echo "test: Validate resource values for trial ${trial_num}..." | tee -a ${LOG}
 	
 	if [ "${actual_resources_count}" -ne "${expected_resources_count}" ]; then
 		flag=1
@@ -399,14 +373,15 @@ function validate_resource_values() {
 			echo "_____________________________________________________________________" | tee -a ${LOG}
 		done
 	fi
+	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
-function get_layers() {
+function validate_tunables() {
 	count=0
 	for layer in $(jq '.[].layers | keys | .[]' ${json_file})
 	do
 		layer_name=$(cat ${json_file} | jq .[${count}].layers[].layer_name | tr -d '"')
-		
 		case "${layer_name}" in
 			container)
 				validate_resource_values
@@ -420,49 +395,50 @@ function get_layers() {
 	done	
 }
 
-function validate_env() {
-	expected_env=$(cat ${container_json} | jq .[].trials[${trial}].training.config[1].spec[].spec[].env | tr '\r\n' ' ' | tr -d '{}')
-	expected_env_count=
-	IFS=',' read -r -a expected_env <<<  ${expected_env}
-	actual_env=$(cat ${actual_json} | jq .spec.containers[].env[] | tr '\r\n' ' ' | tr -d '{}')
-	IFS=',' read -r -a actual_env <<<  ${actual_env}
-	expected_behaviour="Number of tunables in deployment must be same as input"
-	echo "----------------------------Validate number of tunables ----------------------------"
-	echo ""
-	if [ "${expected_env_count}" != "${actual_env_count}" ]; then
-		failed=1
-		display_result "${expected_behaviour}" ${test_name} ${failed}
-	else
-		failed=0
-		display_result "${expected_behaviour}" ${test_name} ${failed}
-		for env in "${expected_env[@]}"
-		do
-			echo "----------------------------Validate ${env}----------------------------"
-			
-			# Get the name of the tunable
-			e_name=$(echo ${env} | awk '{print $1}' | tr -d ':')
-			
-			# Get the value of the tunable. Start from front, grep everything after ":"
-			e_value="${env#*:}"
-			
-			search_string="${e_name}"
-			
-			# Returns the same value if ts present
-			match_name=$(echo "${actual_env[@]:0}" | grep -o "${e_name}")
-			match_value=$(echo "${actual_env[@]:0}" | grep -o "${e_value}")
-			
-			if [[ ! -z "${match_name}" && ! -z "${match_value}" ]]; then
-				failed=0
-			else
-				failed=1
-			fi
-			display_result "${env}" ${test_name} ${failed}
-		done
+function check_env_value() {
+	failed=0
+	
+	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
+	echo "" | tee -a ${LOG}
+	echo "test: Validate env value for ${env_name}..."  | tee -a ${LOG}
+	env_value=$(cat ${result} | jq .[].trials[${trial}].training.config[1].spec[].spec[].env[] | grep "${env_name}" | tr -d ''${env_name}'":X=-')
+
+	# bc(basic calculator) returns 1 if condition is TRUE else retturns 0
+	if [[ $(bc <<< "${env_value} >= ${env_lower_bound} && ${env_value} <= ${env_upper_bound}") == 0 ]]; then
+ 		failed=1
 	fi
+
+	expected_behaviour="Layer tunable value should be within the given range"
+	display_result "${expected_behaviour}" ${test_name} ${failed}
+}
+
+function validate_env() {
+	layer_config_json="${AUTOTUNE_CONFIG_JSONS_DIR}/${layer_name}.json"
+	for env in $(jq '.tunables | keys | .[]' ${layer_config_json})
+	do
+		env_name=$(cat ${layer_config_json} | jq .tunables[${env}].name | tr -d '"')
+		env_upper_bound=$(cat ${layer_config_json} | jq .tunables[${env}].upper_bound)
+		env_lower_bound=$(cat ${layer_config_json} | jq .tunables[${env}].lower_bound)
+		
+		env_to_search=$(echo "-XX:${env_name}")
+		expected_behaviour="The layer tunable ${env_name} must be present in the result"
+		
+		echo "" | tee -a ${LOG}
+		echo "test: Validate env name ${env_name}..."  | tee -a ${LOG}
+		if  grep -q "${env_name}" "${result}" ; then
+			failed=0
+			display_result "${expected_behaviour}" ${test_name} ${failed} 
+			check_env_value
+		else
+			failed=1
+			display_result "${expected_behaviour}" ${test_name} ${failed} 
+		fi
+		echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
+	done
 }
 
 function validate_config_values() {
-	get_layers
+	validate_tunables
 }
 
 function validate_config_details() {
@@ -476,14 +452,14 @@ function validate_config_details() {
 }
 
 function validate_list_exp_trials() {
-	trial=$1
-	
-	if [ -z "${trial}" ]; then
-		trial=0
-	fi
-	
 	test_name="${FUNCNAME}"
-	validate_trial_details
-	validate_trial_metrics
-	validate_config_details
+	
+	for trial in $(jq '.[].trials | keys | .[]' ${result})
+	do	
+		trial_num=$(cat ${result} | jq .[].trials[${trial}].trial_num)
+		input_json="${TEST_DIR_}/resources/em_input_json/petclinic_input_${trial}.json"
+		validate_trial_details
+		validate_trial_metrics
+		validate_config_details
+	done
 }
