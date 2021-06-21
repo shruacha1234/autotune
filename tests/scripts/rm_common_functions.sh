@@ -21,7 +21,8 @@ declare -A expected_exp_details
 declare -A actual_exp_details
 declare -A trial_metrics_value
 
-function get_actual_exp_info() {
+# Get actual experiment details obtained from listExperiment API and store it in actual_exp_details hashmap
+function create_actual_exp_info() {
 	actual_exp_details[experiment_id]=$(cat ${result} | jq .[].experiment_id)
 	actual_exp_details[application_name]=$(cat ${result} | jq .[].application_name)
 	actual_exp_details[objective_function]=$(cat ${result} | jq .[].objective_function)
@@ -29,7 +30,8 @@ function get_actual_exp_info() {
 	actual_exp_details[direction]=$(cat ${result} | jq .[].direction)
 }
 
-function get_expected_exp_info() {
+# Get expected experiment details and store it in expected_exp_details hashmap
+function create_expected_exp_info() {
 	expected_exp_details[experiment_id]=$(cat ${json_file} | jq .[].id)
 	expected_exp_details[application_name]="${application_name}"
 	expected_exp_details[objective_function]=$(cat ${autotune_json_} | jq .spec.sla.objective_function)
@@ -37,11 +39,12 @@ function get_expected_exp_info() {
 	expected_exp_details[direction]=$(cat ${autotune_json_} | jq .spec.sla.direction)
 }
 
+# Perform test to validate the experiment details. Create the actual and expected experiment details hashmap and compare them 
 function validate_list_exp_info() {
 	exp_details=("experiment_id" "application_name" "objective_function" "sla_class" "direction")
 	
-	get_actual_exp_info 
-	get_expected_exp_info
+	create_actual_exp_info 
+	create_expected_exp_info
 	
 	for exp_info in "${exp_details[@]}"
 	do
@@ -65,27 +68,30 @@ function validate_list_exp_info() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
-function get_actual_trial_info() {
+# Get actual trial details obtained from listExperiment API and store it in actual_trial_details hashmap
+function create_actual_trial_info() {
 	actual_trial_details[trial_num]=$(cat ${result} | jq .[].trials[${trial}].trial_num)
 	actual_trial_details[trial_run]=$(cat ${result} | jq .[].trials[${trial}].trial_run)
 	actual_trial_details[trial_measurement_time]=$(cat ${result} | jq .[].trials[${trial}].trial_measurement_time)
 	actual_trial_details[deployment_name]=$(cat ${result} | jq .[].trials[${trial}].training.deployment_name)
 }
 
-function get_expected_trial_info() {
+# Get expected trial details and store it in expected_trial_details hashmap
+function create_expected_trial_info() {
 	expected_trial_details[trial_num]=$(cat ${input_json} | jq .[].trials[].trial_num)
 	expected_trial_details[trial_run]=$(cat ${input_json} | jq .[].trials[].trial_run)
 	expected_trial_details[trial_measurement_time]=$(cat ${input_json} | jq .[].trials[].trial_measurement_time)
 	expected_trial_details[deployment_name]=$(cat ${input_json} | jq .[].trials[].training.deployment_name)
 }
 
+# Perform test to validate the trial details. Create the actual and expected trial details hashmap and compare them
 function validate_trial_details() {
 	trial_details=("trial_num" "trial_run" "trial_measurement_time" "deployment_name")
 	declare -A expected_trial_details
 	declare -A actual_trial_details
 	
-	get_actual_trial_info
-	get_expected_trial_info
+	create_actual_trial_info
+	create_expected_trial_info
 	
 	for trial in "${trial_details[@]}"
 	do
@@ -109,6 +115,7 @@ function validate_trial_details() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}	
 }
 
+# Create the expected metric details JSON using application autotune object and layer config object
 function create_expected_metric_details() {
 	# Get tunables from application autotune object
 	app_autotune_tunables_json="${TEST_DIR}/listExperiment_result_app_autotune_tunables.json"
@@ -133,11 +140,13 @@ function create_expected_metric_details() {
 	printf ']' >> ${expected_metrics_json}
 }
 
+# Create the actual metrics JSON using listExperiments API result
 function create_actual_metric_details() {
 	# Sort the json based on metric name
 	echo "$(jq '[.[].trials['${trial}'].training.metrics[] | {name: .name, query: .query, datasource: .datasource}] | sort_by(.name)' ${result})" > ${actual_metrics_json}
 }
 
+# Perform test to validate the metrics details. Create the actual and expected metric details JSON and compare them 
 function validate_metric_details() {
 	echo "------------------------------ Validating metric details ------------------------------" | tee -a ${LOG}
 	actual_metrics_json="${TEST_DIR}/listExperiment_result_actual_metrics.json"
@@ -152,7 +161,8 @@ function validate_metric_details() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
-function check_for_non_blank_values() {
+# Check if any metric has blank value. If so fail the test.
+function check_for_blank_values() {
 	failed=0
 	metrics=('"name"' '"query"' '"datasource"' '"score"' '"Error"' '"min"' '"mean"' '"mode"' '"max"' '"95.0"' '"99.0"' '"99.9"' '"99.99"' '"99.999"' '"99.9999"' '"100.0"' '"spike"')
 	
@@ -173,6 +183,7 @@ function check_for_non_blank_values() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
+# Check if the percentile values for 95, 99, ... 99.9999, 100 are in ascending order(If any of the percentile value is blank then fail the test). If not fail the test.
 function validate_percentile_values() {
 	failed=0
 	percetile=('"95.0"' '"99.0"' '"99.9"' '"99.99"' '"99.999"' '"99.9999"' '"100.0"')
@@ -180,6 +191,7 @@ function validate_percentile_values() {
 	
 	echo ""  | tee -a ${LOG}
 	echo "test: Validate percentile values..."  | tee -a ${LOG}
+	
 	# Store the percentile values in an array in the given order
 	for p in "${percetile[@]}"
 	do
@@ -208,6 +220,7 @@ function validate_percentile_values() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
+# Perform test to check if the mean value is less than 99 percentile. If not fail the test.
 function validate_mean() {
 	mean=$(echo ${trial_metrics_value['"mean"']} | tr -d '"')
 	nn_percentile=$(echo ${trial_metrics_value['"99.0"']} | tr -d '"')
@@ -230,12 +243,14 @@ function validate_mean() {
 	display_result "${expected_behaviour}" ${test_name} ${failed}
 }
 
+# Perform tests to validate metric values. Check if any metric has blank value, Validate the percentile values and validate mean value with respect to 99 percentile.
 function vaildate_metrics_values() {
-	check_for_non_blank_values
+	check_for_blank_values
 	validate_percentile_values
 	validate_mean
 }
 
+# Perform tests to validate the trial metrics(Validate metrics details and metrics values)
 function validate_trial_metrics() {
 	count=0
 	metric_details=("name" "query" "datasource")
@@ -260,6 +275,7 @@ function validate_trial_metrics() {
 	done
 }
 
+# Generate the expected config template JSON. Validate the actual config template created using listExperiment API result with respect to expected config.
 function validate_config_template() {
 	config_details="${TEST_DIR_}/resources/rm_result_config_info/rm_result_config_info.json"
 	resources="jq .[].trials[].training.config[0].spec[].spec[].resources"
@@ -317,6 +333,7 @@ function validate_config_template() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
+# Get the tunable value according to tunable name and check if the value is within the given range.
 function check_tunable_value() {
 	tunable_name=$(echo $1 | tr -d '"')
 	tunable_upper_bound=$2
@@ -347,6 +364,7 @@ function check_tunable_value() {
 	display_result "${expected_behaviour}" ${test_name} ${flag}
 }
 
+# Test to validate the resource values listed by listExperiments API. Check if the tunables listed are matching with the expected tunables and also tunable value is within the given range.
 function validate_resource_values() {
 	resources_=".[0].spec[].spec[].resources"
 	container_json="${AUTOTUNE_CONFIG_JSONS_DIR}/${layer_name}.json"
@@ -377,24 +395,7 @@ function validate_resource_values() {
 	echo "------------------------------------------------------------------------------------------" | tee -a ${LOG}
 }
 
-function validate_tunables() {
-	count=0
-	for layer in $(jq '.[].layers | keys | .[]' ${json_file})
-	do
-		layer_name=$(cat ${json_file} | jq .[${count}].layers[].layer_name | tr -d '"')
-		case "${layer_name}" in
-			container)
-				validate_resource_values
-				;;
-			*)
-				validate_env
-				;;
-		esac	
-		
-		((count++))
-	done	
-}
-
+# Test to check if the layer tunable value is within the given range
 function check_env_value() {
 	failed=0
 	
@@ -412,6 +413,7 @@ function check_env_value() {
 	display_result "${expected_behaviour}" ${test_name} ${failed}
 }
 
+# Test to validate the env. Check if the expected tunabled are listed by listExperiments API and validate the value.
 function validate_env() {
 	layer_config_json="${AUTOTUNE_CONFIG_JSONS_DIR}/${layer_name}.json"
 	for env in $(jq '.tunables | keys | .[]' ${layer_config_json})
@@ -437,20 +439,38 @@ function validate_env() {
 	done
 }
 
-function validate_config_values() {
-	validate_tunables
+# Validate the tunables listed in listExperiments API for each trial
+function validate_tunables() {
+	count=0
+	for layer in $(jq '.[].layers | keys | .[]' ${json_file})
+	do
+		layer_name=$(cat ${json_file} | jq .[${count}].layers[].layer_name | tr -d '"')
+		case "${layer_name}" in
+			container)
+				validate_resource_values
+				;;
+			*)
+				validate_env
+				;;
+		esac	
+		
+		((count++))
+	done	
 }
 
+# Tests to validate config details. Validate the config template and config values(tunables)
 function validate_config_details() {
 	actual_json="${TEST_DIR}/actual_config.json"
 	
-	# Generate the actual json using the listExperiment API result
+	# Generate the config json using the listExperiment API result
 	cat ${result} | jq .[0].trials[${trial}].training.config > ${actual_json}
 	
 	validate_config_template
-	validate_config_values
+	validate_tunables
 }
 
+# Perform tests to validate the experiment trial details for each trial
+# input: test name
 function validate_list_exp_trials() {
 	test_name="${FUNCNAME}"
 	

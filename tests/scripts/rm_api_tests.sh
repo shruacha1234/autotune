@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 #
-##### Script for validating RM results #####
+##### Script for validating RM (listExperiments) API #####
 
 # Get the absolute path of current directory
 CURRENT_DIR="$(dirname "$(realpath "$0")")"
@@ -25,11 +25,11 @@ SCRIPTS_DIR="${CURRENT_DIR}"
 pushd "${CURRENT_DIR}/.." > /dev/null
 TEST_DIR_="${PWD}"
 
-# Source the common functions scripts
+# Source the common functions and constants scripts
 . ${SCRIPTS_DIR}/rm_constants.sh
 . ${SCRIPTS_DIR}/rm_common_functions.sh
 
-# Tests to validate the RM-ML apis
+# Tests to validate the RM (listExperiments) API
 function rm_api_tests() {
 	start_time=$(get_date)
 	FAILED_CASES=()
@@ -158,6 +158,8 @@ function rm_api_tests() {
 	testsuitesummary ${FUNCNAME} ${elapsed_time} ${FAILED_CASES} 
 }
 
+# Generate the listExperiments query for GET opeartion, execute it and store the result along with http code
+# input: testname and experiment id
 function run_list_exp_test() {
 	exp=$1
 	exp_id=$2
@@ -205,7 +207,7 @@ function run_list_exp_test() {
 			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'' -w '\n%{http_code}'"
 			;;
 		valid-exp-id-trial-number)
-			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}' 2>&1)
+			get_list_experiments=$(curl -H 'Accept: application/json' ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=1' -w '\n%{http_code}' 2>&1)
 			get_list_experiments_cmd="${curl} ''${list_exp_url}'?experiment_id='${exp_id}'&trial_num=2' -w '\n%{http_code}'"
 			;;
 	esac
@@ -219,6 +221,7 @@ function run_list_exp_test() {
 	echo "${list_exp_response}" > ${result}
 }
 
+# Perform tests for listExperiment API for invalid queries
 function get_list_exp_invalid_tests() {
 	IFS=' ' read -r -a get_list_exp_invalid_tests <<<  ${rm_ml_api_testscases[$FUNCNAME]}
 	for exp_testcase in "${get_list_exp_invalid_tests[@]}"
@@ -244,6 +247,8 @@ function get_list_exp_invalid_tests() {
 	echo "*************************************************************************************" | tee -a ${LOG_} ${LOG}
 }
 
+# Validate the result obtained from listExperiments API for valid query
+# input: test name
 function validate_list_exp_result() {
 	test_name="${FUNCNAME}"
 	count=0
@@ -264,6 +269,7 @@ function validate_list_exp_result() {
 	done
 }
 
+# Perform tests for listExperiment API for valid queries and validate the result
 function get_list_exp_valid_tests() {
 	IFS=' ' read -r -a get_list_exp_valid_tests <<<  ${rm_ml_api_testscases[$FUNCNAME]}
 
