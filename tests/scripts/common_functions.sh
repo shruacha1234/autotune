@@ -42,6 +42,8 @@ TEST_SUITE_ARRAY=("app_autotune_yaml_tests"
 "modify_autotune_config_tests"
 "sanity"
 "configmap_yaml_tests"
+"autotune_id_tests"
+"autotune_layer_config_id_tests"
 "rm_hpo_api_tests")
 
 modify_autotune_config_tests=("add_new_tunable"
@@ -109,6 +111,7 @@ function update_yaml() {
 # Set up the autotune 
 function setup() {
 	CONFIGMAP_DIR=$1
+	configmap_test=$2
 	
 	# remove the existing autotune objects
 	autotune_cleanup ${cluster_type}
@@ -174,8 +177,8 @@ function deploy_autotune() {
 	${cmd}
 	
 	status="$?"
-	# Check if autotune is deployed 
-	if [ "${status}" -eq "1" ]; then
+	# Check if autotune is deployed(Ignore in case of configmap_yaml_tests)
+	if [[ "${status}" -eq "1" && "${configmap_test}" != "1" ]]; then
 		echo "Error deploying autotune" >>/dev/stderr
 		echo "See ${PWD}/tests/setup.log for more info" >>/dev/stderr
 		exit -1
@@ -555,7 +558,7 @@ function run_test() {
 	echo ""
 	
 	# Delete the prometheus service
-	kubectl delete svc prometheus-svc -n monitoring
+	kubectl delete svc prometheus-test -n monitoring
 }
 
 # Form the curl command based on the cluster type
@@ -649,7 +652,8 @@ function create_expected_searchspace_json() {
 				printf '\n {\n\t\t"value_type": '$(cat ${layer_json} | jq .tunables[${length}].value_type)',' >> ${file_name}
 				printf '\n\t\t"lower_bound": '$(cat ${layer_json} | jq .tunables[${length}].lower_bound)',' >> ${file_name}
 				printf '\n\t\t"name": '$(cat ${layer_json} | jq .tunables[${length}].name)',' >> ${file_name}
-				printf '\n\t\t"upper_bound": '$(cat ${layer_json} | jq .tunables[${length}].upper_bound)'' >> ${file_name}
+				printf '\n\t\t"upper_bound": '$(cat ${layer_json} | jq .tunables[${length}].upper_bound)',' >> ${file_name}
+				printf '\n\t\t"step": '$(cat ${layer_json} | jq .tunables[${length}].step)'' >> ${file_name}
 				if [ "${length}" -ne 0 ]; then
 					printf '\n\t }, \n' >> ${file_name}
 				else
@@ -765,6 +769,7 @@ function create_expected_listapptunables_json() {
 		((index--))
 		printf '{\n  "application_name": "'${app}'",' >> ${file_name}
 		printf '\n  "objective_function": '$(cat ${autotune_json} | jq '.spec.sla.objective_function')',' >> ${file_name}
+		printf '\n  "hpo_algo_impl":  '$(cat ${autotune_json} | jq '.spec.sla.hpo_algo_impl')',' >> ${file_name}
 		printf '\n  "function_variables": [{' >> ${file_name}
 		printf '\n      "value_type": '$(cat ${autotune_json} | jq '.spec.sla.function_variables[].value_type')','  >> ${file_name}
 		printf '\n      "name": '$(cat ${autotune_json} | jq '.spec.sla.function_variables[].name')','  >> ${file_name}
@@ -803,6 +808,7 @@ function create_expected_listapptunables_json() {
 				printf '{\n\t\t"value_type": '$(cat ${layer_json} | jq .tunables[${length}].value_type)',' >> ${file_name}
 				printf '\n\t\t"lower_bound": '$(cat ${layer_json} | jq .tunables[${length}].lower_bound)',' >> ${file_name}
 				printf '\n\t\t"name": '$(cat ${layer_json} | jq .tunables[${length}].name)',\n' >> ${file_name}
+				printf '\n\t\t"step": '$(cat ${layer_json} | jq .tunables[${length}].step)',\n' >> ${file_name}
 				query=$(cat ${layer_json} |jq .tunables[${length}].queries.datasource[].query)
 				query=$(echo ${query} | sed 's/","/,/g; s/^"\|"$//g')
 				query=$(echo "${query/\$CONTAINER_LABEL$/${layer}}")
@@ -951,6 +957,7 @@ function create_expected_listautotunetunables_json() {
 					printf '{\n\t\t"value_type": '$(cat ${layer_json} | jq .tunables[${length}].value_type)',' >> ${file_name}
 					printf '\n\t\t"lower_bound": '$(cat ${layer_json} | jq .tunables[${length}].lower_bound)',' >> ${file_name}
 					printf '\n\t\t"name": '$(cat ${layer_json} | jq .tunables[${length}].name)',' >> ${file_name}
+					printf '\n\t\t"step": '$(cat ${layer_json} | jq .tunables[${length}].step)',' >> ${file_name}
 					printf '\n\t\t"upper_bound": '$(cat ${layer_json} | jq .tunables[${length}].upper_bound)'' >> ${file_name}
 					if [ "${length}" -ne 0 ]; then
 						printf '\n }, \n' >> ${file_name}
@@ -977,6 +984,7 @@ function create_expected_listautotunetunables_json() {
 	echo "expectd json" >> ${LOG}
 	cat ${file_name} >> ${LOG}
 	echo "" >> ${LOG}
+	layer_name=("")
 }
 
 # Get listAutotuneTunables json
@@ -1074,6 +1082,7 @@ function create_expected_listapplayer_json() {
 		# do comparision of actual and expected name
 		objectve_function=$(cat ${autotune_json} | jq '.spec.sla.objective_function')
 		printf '\n    "objective_function": '$(cat ${autotune_json} | jq '.spec.sla.objective_function')',' >> ${file_name}
+		printf '\n  "hpo_algo_impl":  '$(cat ${autotune_json} | jq '.spec.sla.hpo_algo_impl')',' >> ${file_name}
 		deploy=${deployments[count]}
 		layer_names=${layer_configs[$deploy]}
 		IFS=',' read -r -a layer_name <<<  ${layer_name}
@@ -1438,14 +1447,14 @@ function get_autotune_pod_log() {
 # Expose prometheus as nodeport and get the url
 function expose_prometheus() {
 	if [ "${cluster_type}" == "minikube" ]; then
-		exposed=$(kubectl get svc -n monitoring | grep "prometheus-svc")
+		exposed=$(kubectl get svc -n monitoring | grep "prometheus-test")
 		
 		# Check if the service already exposed, If not then expose the service
 		if [ -z "${exposed}" ]; then
-			kubectl expose service prometheus-k8s --type=NodePort --target-port=9090 --name=prometheus-svc -n monitoring >> ${LOG} 2>&1
+			kubectl expose service prometheus-k8s --type=NodePort --target-port=9090 --name=prometheus-test -n monitoring >> ${LOG} 2>&1
 		fi
 		
-		prometheus_url=$(minikube service list | grep "prometheus-svc" | awk '{print $8}')
+		prometheus_url=$(minikube service list | grep "prometheus-test" | awk '{print $8}')
 	fi
 }
 

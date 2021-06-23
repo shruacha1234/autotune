@@ -92,7 +92,7 @@ function modify_autotune_config_tests() {
 	FAILED_CASES=("${FAILED[@]}")
 	
 	# print the testsuite summary
-	testsuitesummary ${FUNCNAME} ${FAILED_CASES} ${elapsed_time} 
+	testsuitesummary ${FUNCNAME} ${elapsed_time} ${FAILED_CASES}
 }
 
 # Perform the tests for Modify existing autotuneconfig 
